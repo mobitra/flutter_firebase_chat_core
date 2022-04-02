@@ -27,8 +27,7 @@ class FirebaseChatCore {
   User? firebaseUser = FirebaseAuth.instance.currentUser;
 
   /// Singleton instance
-  static final FirebaseChatCore instance =
-      FirebaseChatCore._privateConstructor();
+  static final FirebaseChatCore instance = FirebaseChatCore._privateConstructor();
 
   /// Gets proper [FirebaseFirestore] instance
   FirebaseFirestore getFirebaseFirestore() {
@@ -65,9 +64,7 @@ class FirebaseChatCore {
 
     final roomUsers = [types.User.fromJson(currentUser)] + users;
 
-    final room = await getFirebaseFirestore()
-        .collection(config.roomsCollectionName)
-        .add({
+    final room = await getFirebaseFirestore().collection(config.roomsCollectionName).add({
       'createdAt': FieldValue.serverTimestamp(),
       'imageUrl': imageUrl,
       'metadata': metadata,
@@ -104,10 +101,7 @@ class FirebaseChatCore {
 
     if (fu == null) return Future.error('User does not exist');
 
-    final query = await getFirebaseFirestore()
-        .collection(config.roomsCollectionName)
-        .where('userIds', arrayContains: fu.uid)
-        .get();
+    final query = await getFirebaseFirestore().collection(config.roomsCollectionName).where('userIds', arrayContains: fu.uid).get();
 
     final rooms = await processRoomsQuery(
       fu,
@@ -136,9 +130,7 @@ class FirebaseChatCore {
 
     final users = [types.User.fromJson(currentUser), otherUser];
 
-    final room = await getFirebaseFirestore()
-        .collection(config.roomsCollectionName)
-        .add({
+    final room = await getFirebaseFirestore().collection(config.roomsCollectionName).add({
       'createdAt': FieldValue.serverTimestamp(),
       'imageUrl': null,
       'metadata': metadata,
@@ -160,10 +152,7 @@ class FirebaseChatCore {
   /// Creates [types.User] in Firebase to store name and avatar used on
   /// rooms list
   Future<void> createUserInFirestore(types.User user) async {
-    await getFirebaseFirestore()
-        .collection(config.usersCollectionName)
-        .doc(user.id)
-        .set({
+    await getFirebaseFirestore().collection(config.usersCollectionName).doc(user.id).set({
       'createdAt': FieldValue.serverTimestamp(),
       'firstName': user.firstName,
       'imageUrl': user.imageUrl,
@@ -177,26 +166,17 @@ class FirebaseChatCore {
 
   /// Removes message document
   Future<void> deleteMessage(String roomId, String messageId) async {
-    await getFirebaseFirestore()
-        .collection('${config.roomsCollectionName}/$roomId/messages')
-        .doc(messageId)
-        .delete();
+    await getFirebaseFirestore().collection('${config.roomsCollectionName}/$roomId/messages').doc(messageId).delete();
   }
 
   /// Removes room document
   Future<void> deleteRoom(String roomId) async {
-    await getFirebaseFirestore()
-        .collection(config.roomsCollectionName)
-        .doc(roomId)
-        .delete();
+    await getFirebaseFirestore().collection(config.roomsCollectionName).doc(roomId).delete();
   }
 
   /// Removes [types.User] from `users` collection in Firebase
   Future<void> deleteUserFromFirestore(String userId) async {
-    await getFirebaseFirestore()
-        .collection(config.usersCollectionName)
-        .doc(userId)
-        .delete();
+    await getFirebaseFirestore().collection(config.usersCollectionName).doc(userId).delete();
   }
 
   /// Returns a stream of messages from Firebase for a given room
@@ -208,9 +188,7 @@ class FirebaseChatCore {
     List<Object?>? startAfter,
     List<Object?>? startAt,
   }) {
-    var query = getFirebaseFirestore()
-        .collection('${config.roomsCollectionName}/${room.id}/messages')
-        .orderBy('createdAt', descending: true);
+    var query = getFirebaseFirestore().collection('${config.roomsCollectionName}/${room.id}/messages').orderBy('createdAt', descending: true);
 
     if (endAt != null) {
       query = query.endAt(endAt);
@@ -261,11 +239,7 @@ class FirebaseChatCore {
 
     if (fu == null) return const Stream.empty();
 
-    return getFirebaseFirestore()
-        .collection(config.roomsCollectionName)
-        .doc(roomId)
-        .snapshots()
-        .asyncMap(
+    return getFirebaseFirestore().collection(config.roomsCollectionName).doc(roomId).snapshots().asyncMap(
           (doc) => processRoomDocument(
             doc,
             fu,
@@ -290,14 +264,7 @@ class FirebaseChatCore {
 
     if (fu == null) return const Stream.empty();
 
-    final collection = orderByUpdatedAt
-        ? getFirebaseFirestore()
-            .collection(config.roomsCollectionName)
-            .where('userIds', arrayContains: fu.uid)
-            .orderBy('updatedAt', descending: true)
-        : getFirebaseFirestore()
-            .collection(config.roomsCollectionName)
-            .where('userIds', arrayContains: fu.uid);
+    final collection = orderByUpdatedAt ? getFirebaseFirestore().collection(config.roomsCollectionName).where('userIds', arrayContains: fu.uid).orderBy('updatedAt', descending: true) : getFirebaseFirestore().collection(config.roomsCollectionName).where('userIds', arrayContains: fu.uid);
 
     return collection.snapshots().asyncMap(
           (query) => processRoomsQuery(
@@ -312,7 +279,7 @@ class FirebaseChatCore {
   /// Sends a message to the Firestore. Accepts any partial message and a
   /// room ID. If arbitraty data is provided in the [partialMessage]
   /// does nothing.
-  void sendMessage(dynamic partialMessage, String roomId) async {
+  void sendMessage(dynamic partialMessage, String roomId, {types.Message? repliedMessage}) async {
     if (firebaseUser == null) return;
 
     types.Message? message;
@@ -322,24 +289,28 @@ class FirebaseChatCore {
         author: types.User(id: firebaseUser!.uid),
         id: '',
         partialCustom: partialMessage,
+        repliedMessage: repliedMessage,
       );
     } else if (partialMessage is types.PartialFile) {
       message = types.FileMessage.fromPartial(
         author: types.User(id: firebaseUser!.uid),
         id: '',
         partialFile: partialMessage,
+        repliedMessage: repliedMessage,
       );
     } else if (partialMessage is types.PartialImage) {
       message = types.ImageMessage.fromPartial(
         author: types.User(id: firebaseUser!.uid),
         id: '',
         partialImage: partialMessage,
+        repliedMessage: repliedMessage,
       );
     } else if (partialMessage is types.PartialText) {
       message = types.TextMessage.fromPartial(
         author: types.User(id: firebaseUser!.uid),
         id: '',
         partialText: partialMessage,
+        repliedMessage: repliedMessage,
       );
     }
 
@@ -350,9 +321,7 @@ class FirebaseChatCore {
       messageMap['createdAt'] = FieldValue.serverTimestamp();
       messageMap['updatedAt'] = FieldValue.serverTimestamp();
 
-      await getFirebaseFirestore()
-          .collection('${config.roomsCollectionName}/$roomId/messages')
-          .add(messageMap);
+      await getFirebaseFirestore().collection('${config.roomsCollectionName}/$roomId/messages').add(messageMap);
     }
   }
 
@@ -363,15 +332,11 @@ class FirebaseChatCore {
     if (message.author.id != firebaseUser!.uid) return;
 
     final messageMap = message.toJson();
-    messageMap.removeWhere(
-        (key, value) => key == 'author' || key == 'createdAt' || key == 'id');
+    messageMap.removeWhere((key, value) => key == 'author' || key == 'createdAt' || key == 'id');
     messageMap['authorId'] = message.author.id;
     messageMap['updatedAt'] = FieldValue.serverTimestamp();
 
-    await getFirebaseFirestore()
-        .collection('${config.roomsCollectionName}/$roomId/messages')
-        .doc(message.id)
-        .update(messageMap);
+    await getFirebaseFirestore().collection('${config.roomsCollectionName}/$roomId/messages').doc(message.id).update(messageMap);
   }
 
   /// Updates a room in the Firestore. Accepts any room.
@@ -380,11 +345,7 @@ class FirebaseChatCore {
     if (firebaseUser == null) return;
 
     final roomMap = room.toJson();
-    roomMap.removeWhere((key, value) =>
-        key == 'createdAt' ||
-        key == 'id' ||
-        key == 'lastMessages' ||
-        key == 'users');
+    roomMap.removeWhere((key, value) => key == 'createdAt' || key == 'id' || key == 'lastMessages' || key == 'users');
 
     if (room.type == types.RoomType.direct) {
       roomMap['imageUrl'] = null;
@@ -394,11 +355,7 @@ class FirebaseChatCore {
     roomMap['lastMessages'] = room.lastMessages?.map((m) {
       final messageMap = m.toJson();
 
-      messageMap.removeWhere((key, value) =>
-          key == 'author' ||
-          key == 'createdAt' ||
-          key == 'id' ||
-          key == 'updatedAt');
+      messageMap.removeWhere((key, value) => key == 'author' || key == 'createdAt' || key == 'id' || key == 'updatedAt');
 
       messageMap['authorId'] = m.author.id;
 
@@ -407,19 +364,13 @@ class FirebaseChatCore {
     roomMap['updatedAt'] = FieldValue.serverTimestamp();
     roomMap['userIds'] = room.users.map((u) => u.id).toList();
 
-    await getFirebaseFirestore()
-        .collection(config.roomsCollectionName)
-        .doc(room.id)
-        .update(roomMap);
+    await getFirebaseFirestore().collection(config.roomsCollectionName).doc(room.id).update(roomMap);
   }
 
   /// Returns a stream of all users from Firebase
   Stream<List<types.User>> users() {
     if (firebaseUser == null) return const Stream.empty();
-    return getFirebaseFirestore()
-        .collection(config.usersCollectionName)
-        .snapshots()
-        .map(
+    return getFirebaseFirestore().collection(config.usersCollectionName).snapshots().map(
           (snapshot) => snapshot.docs.fold<List<types.User>>(
             [],
             (previousValue, doc) {
